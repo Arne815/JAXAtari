@@ -94,6 +94,7 @@ class OthelloState(NamedTuple):
     difficulty: chex.Array
     end_of_game_reached: chex.Array
     random_key: int
+    player_turn: bool
 
 class OthelloObservation(NamedTuple):
     field: Field
@@ -990,6 +991,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo]):
             field_choice_player = jnp.array([7, 7], dtype=jnp.int32),
             difficulty = jnp.array(1).astype(jnp.int32),
             end_of_game_reached = False,
+            player_turn = True,
             # TODO Figure out why key has shape (2,)
             random_key = jax.random.PRNGKey(key[0])
         )
@@ -1001,54 +1003,48 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo]):
 
         state = state._replace(step_counter=state.step_counter+1)
 
-        decided, new_field_choice = has_player_decided_field(state.field_choice_player, action)  # 2D Array new_field_choice[i, j]
+        def player_step(state, action):
+            decided, new_field_choice = has_player_decided_field(state.field_choice_player, action)  # 2D Array new_field_choice[i, j]
 
-        state = state._replace(field_choice_player=new_field_choice)
+            state = state._replace(field_choice_player=new_field_choice)
 
+            # first, it need to be checked if there is a valid place on the field the disc to be set
+            _, valid_field = check_if_there_is_a_valid_choice(state, white_player=True)
 
-        # first, it need to be checked if there is a valid place on the field the disc to be set
-        _, valid_field = check_if_there_is_a_valid_choice(state, white_player=True)
-
-        # check if the new_field_choice is a valid option
-        valid_choice, new_state = jax.lax.cond(
-            decided,
-            lambda _: field_step(new_field_choice, state, True),
-            lambda _: (False, state),
-            operand=None
-        )
-
-        # now enemy step are required
-        # for now - choose a random field if a given step by agent/human was valid
-        def condition_fun(value):
-            valid_choice, new_state, _ = value
-            valid_choice = jnp.logical_not(valid_choice)
-            return valid_choice
-
-        def body_fun(value):
-            valid_choice, state, key = value
-
-            best_val = get_bot_move(state.field,state.difficulty, state.player_score,state.enemy_score,state.random_key)
-
-            valid_choice, new_state = field_step(best_val, state, False)
-
-            return jax.lax.cond(
-                valid_choice,
-                lambda _: (True, new_state, key),
-                lambda _: (False, state, key),
+            # check if the new_field_choice is a valid option
+            valid_choice, new_state = jax.lax.cond(
+                decided,
+                lambda _: field_step(new_field_choice, state, True),
+                lambda _: (False, state),
                 operand=None
             )
 
-        _, valid_field_enemy = check_if_there_is_a_valid_choice(new_state, white_player=False)
-
-        key = state.random_key
-        initial_x_y = (False, new_state, key)
-        _, final__step_state, _ = jax.lax.cond(
-            jnp.logical_and(
+            # if there is no valid_field or there is a valid_choice, set the turn to the enemy turn
+            new_state = jax.lax.cond(
                 jnp.logical_or(valid_choice, jnp.logical_not(valid_field)),
-                valid_field_enemy
-            ), 
-            lambda _: jax.lax.while_loop(condition_fun, body_fun, initial_x_y),
-            lambda _: (valid_choice, new_state, key),
+                lambda x: x._replace(player_turn=False),
+                lambda x: x,
+                new_state
+            )
+            return new_state
+
+        def enemy_step(state):
+            _, valid_field_enemy = check_if_there_is_a_valid_choice(state, white_player=False)
+            best_val = get_bot_move(state.field,state.difficulty, state.player_score,state.enemy_score,state.random_key)
+            valid_choice, new_state = field_step(best_val, state, False)
+
+            new_state = jax.lax.cond(
+                jnp.logical_or(valid_choice, jnp.logical_not(valid_field_enemy)),
+                lambda _: new_state._replace(player_turn = True),
+                lambda _: state,
+                operand=None
+            )
+            return new_state
+
+        final__step_state = jax.lax.cond(
+            state.player_turn,
+            lambda _: player_step(state, action),
+            lambda _: enemy_step(state),
             operand=None
         )
 
@@ -1075,10 +1071,10 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo]):
         done = self._get_done(final__step_state)
         env_reward = self._get_env_reward(state, final__step_state)
         all_rewards = self._get_all_reward(state, final__step_state)
-        info = self._get_info(new_state, all_rewards)
+        info = self._get_info(final__step_state, all_rewards)
         observation = self._get_observation(final__step_state)
-
         return observation, final__step_state, env_reward, done, info        
+
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_info(self, state: OthelloState, all_rewards: chex.Array) -> OthelloInfo:
@@ -1309,5 +1305,7 @@ if __name__ == "__main__":
         # Render and display
         raster = renderer.render(curr_state)
         aj.update_pygame(screen, raster, 3, WIDTH, HEIGHT)
+        if not curr_state.player_turn:
+            time.sleep(1)
 
     pygame.quit()
