@@ -105,7 +105,8 @@ class EntityPosition(NamedTuple):
     field_color: jnp.ndarray
 
 class OthelloObservation(NamedTuple):
-    field: EntityPosition
+    # field: EntityPosition
+    field_color: jnp.ndarray
     player_score: jnp.ndarray
     enemy_score: jnp.ndarray
 
@@ -2804,7 +2805,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return OthelloObservation(
             player_score = state.player_score,
             enemy_score = state.enemy_score,
-            field = EntityPosition(field_color=field_color_flat)
+            field_color = field_color_flat
         )
     
     @partial(jax.jit, static_argnums=(0,))
@@ -2813,7 +2814,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             jnp.atleast_1d(obs.player_score).reshape(-1),
             jnp.atleast_1d(obs.enemy_score).reshape(-1),
-            obs.field.field_color.reshape(-1),  # (64,)
+            obs.field_color.reshape(-1),  # (64,)
         ])
         # return jnp.concatenate([
         #     obs.player_score.flatten(),
@@ -2846,10 +2847,11 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field": spaces.Dict({
-                #"field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
-                "field_color": spaces.Box(low=0, high=2, shape=(num_fields, ), dtype=jnp.int32),
-            }),
+            "field_color": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            # "field": spaces.Dict({
+            #     #"field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
+            #     "field_color": spaces.Box(low=0, high=2, shape=(num_fields, ), dtype=jnp.int32),
+            # }),
         })
 
     def image_space(self) -> spaces.Box:
