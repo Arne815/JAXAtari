@@ -100,8 +100,12 @@ class OthelloState(NamedTuple):
     end_of_game_reached: chex.Array #Used to check if the game has ended to reset, only true for one state and afterwards resets with a new field to false
     random_key: chex.Array #Stores a random key for random decision used as 0d int
 
+class EntityPosition(NamedTuple):
+    field_id: jnp.ndarray
+    field_color: jnp.ndarray
+
 class OthelloObservation(NamedTuple):
-    field: Field
+    field: EntityPosition
     player_score: jnp.ndarray
     enemy_score: jnp.ndarray
     field_choice_player: jnp.ndarray
@@ -2796,7 +2800,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
-            field=Field(
+            field=EntityPosition(
                 field_id = state.field.field_id.ravel(), #richtig? da ja eigentich array und nicht konkreter wert
                 field_color = state.field.field_color.ravel(),                
             ),
@@ -2808,8 +2812,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
-            obs.field.field_id.flatten(),
-            obs.field.field_color.flatten(),
+            obs.field.field_id,
+            obs.field.field_color,
             obs.field_choice_player.flatten(),
         ])
     
