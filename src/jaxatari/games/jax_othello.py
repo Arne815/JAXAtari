@@ -2798,24 +2798,13 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def _get_observation(self, state: OthelloState):
         NUM_FIELDS = self.consts.NUM_FIELDS
         
-        raw = state.field.field_color
-        if isinstance(raw, (tuple, list)):
-            field_color_flat = jnp.concatenate(list(raw)).reshape(NUM_FIELDS)
-        else:
-            field_color_flat = raw.reshape(NUM_FIELDS)
-        
-        
+        raw = state.field.field_color          # Tuple of 8 arrays
+        field_color_flat = jnp.concatenate(raw).reshape(NUM_FIELDS)
+
         return OthelloObservation(
-            player_score=state.player_score,
-            enemy_score=state.enemy_score,
-            field  = EntityPosition(
-                field_color = field_color_flat
-            ),
-            # field=EntityPosition(
-            # #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
-            #     #field_color = state.field.field_color.reshape(NUM_FIELDS), 
-            #     field_color = field_color_flat,               
-            # ),
+            player_score = state.player_score,
+            enemy_score = state.enemy_score,
+            field = EntityPosition(field_color=field_color_flat)
         )
     
     @partial(jax.jit, static_argnums=(0,))
@@ -2824,7 +2813,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             jnp.atleast_1d(obs.player_score).reshape(-1),
             jnp.atleast_1d(obs.enemy_score).reshape(-1),
-            obs.field.field_color.reshape(-1),  # jetzt (64,)
+            obs.field.field_color.reshape(-1),  # (64,)
         ])
         # return jnp.concatenate([
         #     obs.player_score.flatten(),
