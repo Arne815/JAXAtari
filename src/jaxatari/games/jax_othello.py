@@ -2795,8 +2795,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             player_score=state.player_score,
             enemy_score=state.enemy_score,
             field=Field(
-                field_id = state.field.field_id, #richtig? da ja eigentich array und nicht konkreter wert
-                field_color = state.field.field_color,                
+                field_id = state.field.field_id.ravel(), #richtig? da ja eigentich array und nicht konkreter wert
+                field_color = state.field.field_color.ravel(),                
             ),
             field_choice_player=state.field_choice_player,
         )
@@ -2804,8 +2804,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     @partial(jax.jit, static_argnums=(0,))
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
         return jnp.concatenate([
-            obs.player_score,
-            obs.enemy_score,
+            obs.player_score.flatten(),
+            obs.enemy_score.flatten(),
             obs.field.field_id,
             obs.field.field_color,
             obs.field_choice_player,
