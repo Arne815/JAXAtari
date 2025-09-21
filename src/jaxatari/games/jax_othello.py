@@ -2806,8 +2806,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
-            obs.field.field_id.flatten(),
-            obs.field.field_color.flatten(),
+            obs.field.field_id,
+            obs.field.field_color,
             obs.field_choice_player.flatten(),
         ]
         )
@@ -2851,41 +2851,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         )
 
 
-
-def load_sprites():
-    """Load all sprites required for Pong rendering."""
-    MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    # Load sprites
-    player = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/player_white_disc.npy"), transpose=False)
-    enemy = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/enemy_black_disc.npy"), transpose=False)
-
-    bg = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/othello_background.npy"), transpose=False)
-
-    # Convert all sprites to the expected format (add frame dimension)
-    SPRITE_BG = jnp.expand_dims(bg, axis=0)
-    SPRITE_PLAYER = jnp.expand_dims(player, axis=0)
-    SPRITE_ENEMY = jnp.expand_dims(enemy, axis=0)
-
-    # Load digits for scores
-    PLAYER_DIGIT_SPRITES = jr.load_and_pad_digits(
-        os.path.join(MODULE_DIR, "sprites/othello/number_{}_player.npy"),
-        num_chars=10,
-    )
-    ENEMY_DIGIT_SPRITES = jr.load_and_pad_digits(
-        os.path.join(MODULE_DIR, "sprites/othello/number_{}_enemy.npy"),
-        num_chars=10,
-    )
-
-    return (
-        SPRITE_BG,
-        SPRITE_PLAYER,
-        SPRITE_ENEMY,
-        PLAYER_DIGIT_SPRITES,
-        ENEMY_DIGIT_SPRITES
-    )
-
-
 @jax.jit
 def render_point_of_disc(id):
     return jnp.array([18 + 16 * id[1], 22 + 22 * id[0]], dtype=jnp.int32)
@@ -2901,7 +2866,39 @@ class OthelloRenderer(JAXGameRenderer):
             self.SPRITE_ENEMY,
             self.PLAYER_DIGIT_SPRITES,
             self.ENEMY_DIGIT_SPRITES,
-        ) = load_sprites()
+        ) = self.load_sprites()
+
+    def load_sprites(self):
+        MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+        # Load sprites
+        player = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/player_white_disc.npy"), transpose=False)
+        enemy = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/enemy_black_disc.npy"), transpose=False)
+
+        bg = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/othello_background.npy"), transpose=False)
+
+        # Convert all sprites to the expected format (add frame dimension)
+        SPRITE_BG = jnp.expand_dims(bg, axis=0)
+        SPRITE_PLAYER = jnp.expand_dims(player, axis=0)
+        SPRITE_ENEMY = jnp.expand_dims(enemy, axis=0)
+
+        # Load digits for scores
+        PLAYER_DIGIT_SPRITES = jr.load_and_pad_digits(
+            os.path.join(MODULE_DIR, "sprites/othello/number_{}_player.npy"),
+            num_chars=10,
+        )
+        ENEMY_DIGIT_SPRITES = jr.load_and_pad_digits(
+            os.path.join(MODULE_DIR, "sprites/othello/number_{}_enemy.npy"),
+            num_chars=10,
+        )
+
+        return (
+            SPRITE_BG,
+            SPRITE_PLAYER,
+            SPRITE_ENEMY,
+            PLAYER_DIGIT_SPRITES,
+            ENEMY_DIGIT_SPRITES
+        )
 
     @partial(jax.jit, static_argnums=(0,))
     def render(self, state):
