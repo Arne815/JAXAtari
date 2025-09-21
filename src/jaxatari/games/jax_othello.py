@@ -2803,6 +2803,18 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         field = EntityPosition(
             field_color = jnp.full((NUM_FIELDS,), 0),
         )
+
+        obs = OthelloObservation(
+            player_score=state.player_score,
+            enemy_score=state.enemy_score,
+            field = field,
+            # field=EntityPosition(
+            # #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
+            #     #field_color = state.field.field_color.reshape(NUM_FIELDS), 
+            #     field_color = field_color_flat,               
+            # ),
+        )
+        self.obs_to_flat_array(obs)
         
         return OthelloObservation(
             player_score=state.player_score,
@@ -2817,6 +2829,16 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     
     @partial(jax.jit, static_argnums=(0,))
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
+        
+        flat = jnp.concatenate([
+            obs.player_score.flatten(),
+            obs.enemy_score.flatten(),
+            # obs.field.field_id,
+            obs.field.field_color,
+        ])
+
+        # jax.debug.print("{}", flat)
+        
         return jnp.concatenate([
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
@@ -2843,14 +2865,14 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def action_space(self) -> spaces.Discrete:
         return spaces.Discrete(9)
 
-    def observation_space(self) -> spaces.Box:
-        NUM_FIELDS = self.consts.NUM_FIELDS
+    def observation_space(self) -> spaces.Dict:
+        num_fields = self.consts.NUM_FIELDS
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "field": spaces.Dict({
                 #"field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
-                "field_color": spaces.Box(low=0, high=2, shape=(NUM_FIELDS,), dtype=jnp.int32),
+                "field_color": spaces.Box(low=0, high=2, shape=(num_fields, 4), dtype=jnp.int32),
             }),
         })
 
