@@ -2800,7 +2800,9 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         NUM_FIELDS = self.consts.NUM_FIELDS
         
         raw = state.field.field_color          # Tuple of 8 arrays
-        field_color_flat = jnp.concatenate(raw).reshape(-1)
+        field_color_flat = jnp.concatenate(raw).reshape(-1, 1)
+
+        jax.debug.print("{}", field_color_flat.shape)
 
         return OthelloObservation(
             player_score = state.player_score,
