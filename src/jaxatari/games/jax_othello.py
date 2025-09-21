@@ -2802,27 +2802,15 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         )
     
     @partial(jax.jit, static_argnums=(0,))
-    def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:
-        
-        flat_list = [
-            obs["player_score"].ravel(),
-            obs["enemy_score"].ravel(),
-            obs["field"]["field_id"].ravel(),
-            obs["field"]["field_color"].ravel(),
-            obs["field_choice_player"].ravel()
+    def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
+        return jnp.concatenate([
+            obs.player_score.flatten(),
+            obs.enemy_score.flatten(),
+            obs.field.field_id,
+            obs.field.field_color,
+            obs.field_choice_player,
         ]
-
-        return jnp.concatenate(flat_list)
-        
-        
-        # return jnp.concatenate([
-        #     obs.player_score.flatten(),
-        #     obs.enemy_score.flatten(),
-        #     obs.field.field_id,
-        #     obs.field.field_color,
-        #     obs.field_choice_player.flatten(),
-        # ]
-        # )
+        )
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
