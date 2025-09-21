@@ -2798,11 +2798,10 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def _get_observation(self, state: OthelloState):
         NUM_FIELDS = self.consts.NUM_FIELDS
         
-        raw = state.field.field_color          # Tuple of 8 arrays
+        raw = state.field.field_color        
         field_color_flat = jnp.concatenate(raw).reshape(-1, 1)
 
-        jax.debug.print("{}", field_color_flat.shape)
-
+        field_color_flat = jnp.zeros((64, 1), dtype=jnp.int32)
         return OthelloObservation(
             player_score = state.player_score,
             enemy_score = state.enemy_score,
@@ -2817,12 +2816,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.enemy_score.flatten().astype(jnp.int32),
             obs.field_color.flatten().astype(jnp.int32),
         ])
-        # return jnp.concatenate([
-        #     obs.player_score.flatten(),
-        #     obs.enemy_score.flatten(),
-        #     # obs.field.field_id,
-        #     obs.field.field_color.flatten(),
-        # ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
@@ -2841,14 +2834,14 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return state.end_of_game_reached
 
     def action_space(self) -> spaces.Discrete:
-        return spaces.Discrete(9)
+        return spaces.Discrete(10)
 
     def observation_space(self) -> spaces.Dict:
         num_fields = self.consts.NUM_FIELDS
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field_color": spaces.Box(low=0, high=2, shape=(num_fields, 1), dtype=jnp.int32),
+            "field_color": spaces.Box(low=0, high=2, shape=(64, 1), dtype=jnp.int32),
         })
 
     def image_space(self) -> spaces.Box:
