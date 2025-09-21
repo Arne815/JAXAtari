@@ -108,7 +108,6 @@ class OthelloObservation(NamedTuple):
     field: EntityPosition
     player_score: jnp.ndarray
     enemy_score: jnp.ndarray
-    # field_choice_player: jnp.ndarray
 
 class OthelloInfo(NamedTuple):
     time: jnp.ndarray
@@ -2797,14 +2796,14 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_observation(self, state: OthelloState):
+        NUM_FIELDS = self.consts.NUM_FIELDS
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
             field=EntityPosition(
-                field_id = state.field.field_id.reshape(-1), #richtig? da ja eigentich array und nicht konkreter wert
-                field_color = state.field.field_color.reshape(-1),                
+                field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
+                field_color = state.field.field_color.reshape(NUM_FIELDS),                
             ),
-            # field_choice_player=state.field_choice_player,
         )
     
     @partial(jax.jit, static_argnums=(0,))
@@ -2814,7 +2813,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.enemy_score.flatten(),
             obs.field.field_id,
             obs.field.field_color,
-            # obs.field_choice_player.flatten(),
         ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
@@ -2846,7 +2844,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
                 "field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
                 "field_color": spaces.Box(low=0, high=2, shape=(NUM_FIELDS,), dtype=jnp.int32),
             }),
-            # "field_choice_player":  spaces.Box(low=0, high=63, shape=(2,), dtype=jnp.int32), 
         })
 
     def image_space(self) -> spaces.Box:
