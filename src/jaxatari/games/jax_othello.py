@@ -2801,7 +2801,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         field_color_flat = jnp.concatenate(list(state.field.field_color))
 
         field = EntityPosition(
-            field_color = jnp.full((NUM_FIELDS,), 0),
+            field_color = jax.nn.one_hot(state.field.field_color.flatten(), 4, dtype=jnp.int32)
         )
 
         obs = OthelloObservation(
@@ -2834,7 +2834,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
             # obs.field.field_id,
-            obs.field.field_color,
+            obs.field.field_color.flatten(),
         ])
 
         # jax.debug.print("{}", flat)
@@ -2843,7 +2843,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
             # obs.field.field_id,
-            obs.field.field_color,
+            obs.field.field_color.flatten(),
         ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
