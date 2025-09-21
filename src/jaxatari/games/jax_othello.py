@@ -2801,7 +2801,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         )
     
     @partial(jax.jit, static_argnums=(0,))
-    def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
+    def obs_to_flat_array(self, obs: OthelloObservation) -> chex.Array:      
         
         return jnp.concatenate([
             obs.player_score[None],

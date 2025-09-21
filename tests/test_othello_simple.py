@@ -33,5 +33,6 @@ def test_othello_flatten_observation():
     for obs_leaf, space_leaf in zip(jax.tree_leaves(obs), jax.tree_leaves(flat_space)):
         check_flat(obs_leaf, space_leaf)
 
+
 if __name__ == "__main__":
     pytest.main([__file__])
