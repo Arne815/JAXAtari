@@ -106,9 +106,13 @@ class EntityPosition(NamedTuple):
 
 class OthelloObservation(NamedTuple):
     # field: EntityPosition
-    field_color: chex.Array
-    player_score: jnp.ndarray
-    enemy_score: jnp.ndarray
+    # field_color: chex.Array
+    player_score: chex.Array
+    enemy_score: chex.Array
+    color_0_0: chex.Array
+    color_0_1: chex.Array
+    color_0_2: chex.Array
+    color_0_3: chex.Array
 
 class OthelloInfo(NamedTuple):
     time: jnp.ndarray
@@ -2794,10 +2798,15 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_observation(self, state: OthelloState):
+        
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
-            field_color=state.field.field_color,
+            # field_color=state.field.field_color,
+            color_0_0 = state.field.field_color[0][0],
+            color_0_1 = state.field.field_color[0][1],
+            color_0_2 = state.field.field_color[0][2],
+            color_0_3 = state.field.field_color[0][3],
         )
     
     @partial(jax.jit, static_argnums=(0,))
@@ -2806,7 +2815,11 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             obs.player_score[None],
             obs.enemy_score[None],
-            obs.field_color.flatten(),
+            # obs.field_color.flatten(),
+            obs.color_0_0[None],
+            obs.color_0_1[None],
+            obs.color_0_2[None],
+            obs.color_0_3[None],
         ]).astype(jnp.int32)
     
     def render(self, state: OthelloState) -> jnp.ndarray:
@@ -2835,7 +2848,11 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field_color": spaces.Box(low=0, high=2, shape=(self.consts.FIELD_HEIGHT, self.consts.FIELD_WIDTH), dtype=jnp.int32),
+            # "field_color": spaces.Box(low=0, high=2, shape=(self.consts.FIELD_HEIGHT, self.consts.FIELD_WIDTH), dtype=jnp.int32),
+            "color_0_0": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            "color_0_1": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            "color_0_2": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            "color_0_3": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
         })
 
     def image_space(self) -> spaces.Box:
