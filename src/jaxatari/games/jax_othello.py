@@ -2805,11 +2805,11 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:
         
         flat_list = [
-            obs_dict["player_score"].ravel(),
-            obs_dict["enemy_score"].ravel(),
-            obs_dict["field"]["field_id"].ravel(),
-            obs_dict["field"]["field_color"].ravel(),
-            obs_dict["field_choice_player"].ravel()
+            obs["player_score"].ravel(),
+            obs["enemy_score"].ravel(),
+            obs["field"]["field_id"].ravel(),
+            obs["field"]["field_color"].ravel(),
+            obs["field_choice_player"].ravel()
         ]
 
         return jnp.concatenate(flat_list)
