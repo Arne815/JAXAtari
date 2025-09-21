@@ -2798,29 +2798,19 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def _get_observation(self, state: OthelloState):
         NUM_FIELDS = self.consts.NUM_FIELDS
         
-        field_color_flat = jnp.concatenate(list(state.field.field_color))
-
-        field = EntityPosition(
-            field_color = jax.nn.one_hot(state.field.field_color.flatten(), 4, dtype=jnp.int32)
-        )
-
-        obs = OthelloObservation(
-            player_score=state.player_score,
-            enemy_score=state.enemy_score,
-            field = field,
-            # field=EntityPosition(
-            # #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
-            #     #field_color = state.field.field_color.reshape(NUM_FIELDS), 
-            #     field_color = field_color_flat,               
-            # ),
-        )
-        self.obs_to_flat_array(obs)
+        raw = state.field.field_color
+        if isinstance(raw, (tuple, list)):
+            field_color_flat = jnp.concatenate(list(raw)).reshape(NUM_FIELDS)
+        else:
+            field_color_flat = raw.reshape(NUM_FIELDS)
         
         
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
-            field = field,
+            field  = EntityPosition(
+                field_color = field_color_flat
+            ),
             # field=EntityPosition(
             # #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
             #     #field_color = state.field.field_color.reshape(NUM_FIELDS), 
@@ -2831,22 +2821,17 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     @partial(jax.jit, static_argnums=(0,))
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
         
-        flat = jnp.concatenate([
-            obs.player_score.flatten(),
-            obs.enemy_score.flatten(),
-            # obs.field.field_id,
-            obs.field.field_color.flatten(),
-        ])
-
-        jax.debug.print("field_color original shape = {}", obs.field.field_color.shape)
-
-        
         return jnp.concatenate([
-            obs.player_score.flatten(),
-            obs.enemy_score.flatten(),
-            # obs.field.field_id,
-            obs.field.field_color.flatten(),
+            jnp.atleast_1d(obs.player_score).reshape(-1),
+            jnp.atleast_1d(obs.enemy_score).reshape(-1),
+            obs.field.field_color.reshape(-1),  # jetzt (64,)
         ])
+        # return jnp.concatenate([
+        #     obs.player_score.flatten(),
+        #     obs.enemy_score.flatten(),
+        #     # obs.field.field_id,
+        #     obs.field.field_color.flatten(),
+        # ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
