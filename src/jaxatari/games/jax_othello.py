@@ -116,12 +116,11 @@ class OthelloInfo(NamedTuple):
 
 
 class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, OthelloConstants ]):
-    def __init__(self, consts: OthelloConstants = None, frameskip: int = 0, reward_funcs: list[callable]=None):
+    def __init__(self, consts: OthelloConstants = None, reward_funcs: list[callable]=None):
         consts = consts or OthelloConstants()
         super().__init__(consts)
         self.renderer = OthelloRenderer(self.consts)
-        self.frameskip = frameskip + 1
-        self.frame_stack_size = 1
+        self.frame_stack_size = 0
         
         if reward_funcs is not None:
             reward_funcs = tuple(reward_funcs)
