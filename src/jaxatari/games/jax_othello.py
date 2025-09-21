@@ -2842,10 +2842,13 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def action_space(self) -> spaces.Discrete:
         return spaces.Discrete(9)
 
-    def observation_space(self) -> spaces.Box:
+    def observation_space(self) -> spaces.Dict:
         num_fields = self.consts.NUM_FIELDS
-        total_size = 1 + 1 + num_fields  # player_score + enemy_score + field_color
-        return spaces.Box(low=0, high=64, shape=(total_size,), dtype=jnp.int32)
+        return spaces.Dict({
+            "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
+            "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
+            "field_color": spaces.Box(low=0, high=2, shape=(num_fields,), dtype=jnp.int32),
+        })
 
     def image_space(self) -> spaces.Box:
         return spaces.Box(
