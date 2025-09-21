@@ -106,7 +106,7 @@ class EntityPosition(NamedTuple):
 
 class OthelloObservation(NamedTuple):
     # field: EntityPosition
-    field_color: jnp.ndarray
+    field_color: chex.Array
     player_score: jnp.ndarray
     enemy_score: jnp.ndarray
 
@@ -120,7 +120,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         consts = consts or OthelloConstants()
         super().__init__(consts)
         self.renderer = OthelloRenderer(self.consts)
-        self.frame_stack_size = 4
         
         if reward_funcs is not None:
             reward_funcs = tuple(reward_funcs)
@@ -137,7 +136,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             Action.DOWNLEFT,
             Action.DOWNRIGHT
         ]
-        self.obs_size = 66
 
     @partial(jax.jit, static_argnums=(0,))
     def has_player_decided_field(self, field_choice_player: chex.Array, action: chex.Array) -> Tuple[bool, chex.Array]:
@@ -2796,34 +2794,20 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_observation(self, state: OthelloState):
-        NUM_FIELDS = self.consts.NUM_FIELDS
-        frame_stack = getattr(self, "frame_stack_size", 1)  # normalerweise 4
-
-        # Aktuelles field_color flatten + (NUM_FIELDS, 1)
-        raw = state.field.field_color        
-        field_color_flat = jnp.concatenate(raw).reshape(-1, 1)  # (64,1)
-
-        # Dummy Frame-Stack: Wiederhole field_color_flat `frame_stack`-mal
-        field_color_stacked = jnp.tile(field_color_flat, (frame_stack, 1))  # (64*4,1)
-
-        # Spieler- und Gegner-Score ebenfalls dummy stacked (frame_stack,)
-        player_score_stacked = jnp.tile(jnp.atleast_1d(state.player_score), frame_stack)
-        enemy_score_stacked = jnp.tile(jnp.atleast_1d(state.enemy_score), frame_stack)
-
         return OthelloObservation(
-            player_score=player_score_stacked,
-            enemy_score=enemy_score_stacked,
-            field_color=field_color_stacked
+            player_score=state.player_score,
+            enemy_score=state.enemy_score,
+            field_color=state.field.field_color,
         )
     
     @partial(jax.jit, static_argnums=(0,))
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
         
         return jnp.concatenate([
-            obs.player_score.flatten().astype(jnp.int32),
-            obs.enemy_score.flatten().astype(jnp.int32),
-            obs.field_color.flatten().astype(jnp.int32),
-        ])
+            obs.player_score[None],
+            obs.enemy_score[None],
+            obs.field_color.flatten(),
+        ]).astype(jnp.int32)
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
@@ -2842,16 +2826,16 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return state.end_of_game_reached
 
     def action_space(self) -> spaces.Discrete:
-        return spaces.Discrete(10)
+        return spaces.Discrete(9)
 
     def observation_space(self) -> spaces.Dict:
-        num_fields = self.consts.NUM_FIELDS
-        frame_stack = getattr(self, "frame_stack_size", 1)  # falls frame stacking aktiv ist
+        """
+        Return the observation space for the environment.
+        """
         return spaces.Dict({
-            "player_score": spaces.Box(low=0, high=64, shape=(frame_stack,), dtype=jnp.int32),
-            "enemy_score": spaces.Box(low=0, high=64, shape=(frame_stack,), dtype=jnp.int32),
-            # field_color flach + Frames gestapelt: (64 * frame_stack, 1) → flach wird der FlattenWrapper es zu (64*frame_stack,)
-            "field_color": spaces.Box(low=0, high=2, shape=(num_fields * frame_stack, 1), dtype=jnp.int32),
+            "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
+            "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
+            "field_color": spaces.Box(low=0, high=2, shape=(self.consts.FIELD_HEIGHT, self.consts.FIELD_WIDTH), dtype=jnp.int32),
         })
 
     def image_space(self) -> spaces.Box:
