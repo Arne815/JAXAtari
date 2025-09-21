@@ -370,7 +370,7 @@ class JaxDonkeyKong(JaxEnvironment[DonkeyKongState, DonkeyKongObservation, Donke
             Action.RIGHTFIRE,
             Action.LEFTFIRE,
         ]
-        self.obs_size = 0
+        self.obs_size = 5 + 4 + 3 + 4 + 1 + 5*4 + 5*4 + 4*8 + 16*6
 
     # Bars as lienar functions - given y position of anything (can be Mario, Barrel, Fire) and the stage, it calculates the corresponding x position
     # That function is needed because some bars on level 1 are crooked

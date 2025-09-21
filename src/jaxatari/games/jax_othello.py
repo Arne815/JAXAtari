@@ -121,7 +121,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         super().__init__(consts)
         self.renderer = OthelloRenderer(self.consts)
         self.frameskip = frameskip + 1
-        self.frame_stack_size = 4
+        self.frame_stack_size = 1
         
         if reward_funcs is not None:
             reward_funcs = tuple(reward_funcs)
@@ -138,7 +138,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             Action.DOWNLEFT,
             Action.DOWNRIGHT
         ]
-        self.obs_size = 130
+        self.obs_size = 66
 
     @partial(jax.jit, static_argnums=(0,))
     def has_player_decided_field(self, field_choice_player: chex.Array, action: chex.Array) -> Tuple[bool, chex.Array]:
