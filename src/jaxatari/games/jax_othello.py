@@ -2800,7 +2800,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         NUM_FIELDS = self.consts.NUM_FIELDS
         
         raw = state.field.field_color          # Tuple of 8 arrays
-        field_color_flat = jnp.concatenate(raw).reshape(NUM_FIELDS)
+        field_color_flat = jnp.concatenate(raw).reshape(-1)
 
         return OthelloObservation(
             player_score = state.player_score,
@@ -2812,9 +2812,9 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:      
         
         return jnp.concatenate([
-            jnp.atleast_1d(obs.player_score).reshape(-1),
-            jnp.atleast_1d(obs.enemy_score).reshape(-1),
-            obs.field_color.reshape(-1),  # (64,)
+            obs.player_score.flatten().astype(jnp.int32),
+            obs.enemy_score.flatten().astype(jnp.int32),
+            obs.field_color.flatten().astype(jnp.int32),
         ])
         # return jnp.concatenate([
         #     obs.player_score.flatten(),
@@ -2847,7 +2847,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field_color": spaces.Box(low=0, high=2, shape=(num_fields,), dtype=jnp.int32),
+            "field_color": spaces.Box(low=0, high=2, shape=(num_fields, 1), dtype=jnp.int32),
         })
 
     def image_space(self) -> spaces.Box:
@@ -2857,11 +2857,6 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             shape=(210, 160, 3),
             dtype=jnp.uint8
         )
-
-
-@jax.jit
-def render_point_of_disc(id):
-    return jnp.array([18 + 16 * id[1], 22 + 22 * id[0]], dtype=jnp.int32)
 
 
 class OthelloRenderer(JAXGameRenderer):
@@ -2909,6 +2904,10 @@ class OthelloRenderer(JAXGameRenderer):
         )
 
     @partial(jax.jit, static_argnums=(0,))
+    def render_point_of_disc(self, id):
+        return jnp.array([18 + 16 * id[1], 22 + 22 * id[0]], dtype=jnp.int32)
+
+    @partial(jax.jit, static_argnums=(0,))
     def render(self, state):
         # Create empty raster with CORRECT orientation for atraJaxis framework
         # Note: For pygame, the raster is expected to be (width, height, channels)
@@ -2929,7 +2928,7 @@ class OthelloRenderer(JAXGameRenderer):
                 def inner_loop(j, carry):
                     raster = carry
                     color = field_color[i, j]
-                    render_point = render_point_of_disc(jnp.array([i,j], dtype=jnp.int32))
+                    render_point = self.render_point_of_disc(jnp.array([i,j], dtype=jnp.int32))
 
                     return jax.lax.cond(
                         color == FieldColor.EMPTY, 
@@ -2951,7 +2950,7 @@ class OthelloRenderer(JAXGameRenderer):
 
         # rendering the disc in flipping modus to show where the current disc is 
         # for better orientation
-        current_player_choice = render_point_of_disc(state.field_choice_player)
+        current_player_choice = self.render_point_of_disc(state.field_choice_player)
         raster = jax.lax.cond(
             jnp.logical_and(
                 jnp.logical_not(state.end_of_game_reached),
