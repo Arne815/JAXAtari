@@ -2801,8 +2801,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             player_score=state.player_score,
             enemy_score=state.enemy_score,
             field=EntityPosition(
-                field_id = state.field.field_id.ravel(), #richtig? da ja eigentich array und nicht konkreter wert
-                field_color = state.field.field_color.ravel(),                
+                field_id = state.field.field_id.reshape(-1), #richtig? da ja eigentich array und nicht konkreter wert
+                field_color = state.field.field_color.reshape(-1),                
             ),
             # field_choice_player=state.field_choice_player,
         )
