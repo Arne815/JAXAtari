@@ -2816,6 +2816,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         )
         self.obs_to_flat_array(obs)
         
+        
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
@@ -2837,7 +2838,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.field.field_color.flatten(),
         ])
 
-        # jax.debug.print("{}", flat)
+        jax.debug.print("field_color original shape = {}", obs.field.field_color.shape)
+
         
         return jnp.concatenate([
             obs.player_score.flatten(),
@@ -2872,7 +2874,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "field": spaces.Dict({
                 #"field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
-                "field_color": spaces.Box(low=0, high=2, shape=(num_fields, 4), dtype=jnp.int32),
+                "field_color": spaces.Box(low=0, high=2, shape=(num_fields, ), dtype=jnp.int32),
             }),
         })
 
