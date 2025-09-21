@@ -2799,15 +2799,20 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         NUM_FIELDS = self.consts.NUM_FIELDS
         
         field_color_flat = jnp.concatenate(list(state.field.field_color))
+
+        field = EntityPosition(
+            field_color = jnp.full((NUM_FIELDS,), 0),
+        )
         
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
-            field=EntityPosition(
-            #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
-                #field_color = state.field.field_color.reshape(NUM_FIELDS), 
-                field_color = field_color_flat,               
-            ),
+            field = field,
+            # field=EntityPosition(
+            # #     field_id = state.field.field_id.reshape(NUM_FIELDS), #richtig? da ja eigentich array und nicht konkreter wert
+            #     #field_color = state.field.field_color.reshape(NUM_FIELDS), 
+            #     field_color = field_color_flat,               
+            # ),
         )
     
     @partial(jax.jit, static_argnums=(0,))
