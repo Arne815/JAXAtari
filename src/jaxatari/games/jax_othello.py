@@ -75,6 +75,8 @@ class OthelloConstants(NamedTuple):
     WINDOW_HEIGHT = 210 * 3
     WINDOW_WIDTH = 160 * 3
 
+    NUM_FIELDS = 64
+
 
 # Describes the possible configurations of one individual field (Not Taken, Player and Enemy)
 class FieldColor(enum.IntEnum):
@@ -2831,12 +2833,14 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Discrete(9)
 
     def observation_space(self) -> spaces:
+        NUM_FIELDS = self.consts.NUM_FIELDS
+
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "field": spaces.Dict({
-                "field_id": spaces.Box(low=0, high=63, shape=(64,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
-                "field_color": spaces.Box(low=0, high=2, shape=(64,), dtype=jnp.int32),
+                "field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
+                "field_color": spaces.Box(low=0, high=2, shape=(NUM_FIELDS,), dtype=jnp.int32),
             }),
             "field_choice_player":  spaces.Box(low=0, high=63, shape=(2,), dtype=jnp.int32), 
         })
