@@ -2808,9 +2808,9 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return jnp.concatenate([
             obs.player_score.flatten(),
             obs.enemy_score.flatten(),
-            obs.field.field_id,
-            obs.field.field_color,
-            obs.field_choice_player,
+            obs.field.field_id.flatten(),
+            obs.field.field_color.flatten(),
+            obs.field_choice_player.flatten(),
         ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
