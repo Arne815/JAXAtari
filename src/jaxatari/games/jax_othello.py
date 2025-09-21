@@ -2847,7 +2847,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field_color": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            "field_color": spaces.Box(low=0, high=2, shape=(num_fields,), dtype=jnp.int32),
             # "field": spaces.Dict({
             #     #"field_id": spaces.Box(low=0, high=63, shape=(NUM_FIELDS,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
             #     "field_color": spaces.Box(low=0, high=2, shape=(num_fields, ), dtype=jnp.int32),
