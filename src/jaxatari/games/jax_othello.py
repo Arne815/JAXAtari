@@ -2803,14 +2803,26 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     
     @partial(jax.jit, static_argnums=(0,))
     def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:
-        return jnp.concatenate([
-            obs.player_score.flatten(),
-            obs.enemy_score.flatten(),
-            obs.field.field_id,
-            obs.field.field_color,
-            obs.field_choice_player.flatten(),
+        
+        flat_list = [
+            obs_dict["player_score"].ravel(),
+            obs_dict["enemy_score"].ravel(),
+            obs_dict["field"]["field_id"].ravel(),
+            obs_dict["field"]["field_color"].ravel(),
+            obs_dict["field_choice_player"].ravel()
         ]
-        )
+
+        return jnp.concatenate(flat_list)
+        
+        
+        # return jnp.concatenate([
+        #     obs.player_score.flatten(),
+        #     obs.enemy_score.flatten(),
+        #     obs.field.field_id,
+        #     obs.field.field_color,
+        #     obs.field_choice_player.flatten(),
+        # ]
+        # )
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
@@ -2831,7 +2843,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     def action_space(self) -> spaces.Discrete:
         return spaces.Discrete(9)
 
-    def observation_space(self) -> spaces.Dict:
+    def observation_space(self) -> spaces:
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
