@@ -2809,8 +2809,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             obs.field.field_id.ravel(),
             obs.field.field_color.ravel(),
             obs.field_choice_player.ravel(),
-        ]
-        )
+        ])
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
@@ -2836,8 +2835,8 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "field": spaces.Dict({
-                "field_id": spaces.Box(low=0, high=63, shape=(8,8), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
-                "field_color": spaces.Box(low=0, high=2, shape=(8,8), dtype=jnp.int32),
+                "field_id": spaces.Box(low=0, high=63, shape=(64,), dtype=jnp.int32), #richtig?, da ja eigentlich array und kein konkreter wert?
+                "field_color": spaces.Box(low=0, high=2, shape=(64,), dtype=jnp.int32),
             }),
             "field_choice_player":  spaces.Box(low=0, high=63, shape=(2,), dtype=jnp.int32), 
         })
