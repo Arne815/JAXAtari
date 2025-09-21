@@ -120,7 +120,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         consts = consts or OthelloConstants()
         super().__init__(consts)
         self.renderer = OthelloRenderer(self.consts)
-        self.frame_stack_size = 0
+        self.frame_stack_size = 4
         
         if reward_funcs is not None:
             reward_funcs = tuple(reward_funcs)
@@ -2797,15 +2797,23 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
     @partial(jax.jit, static_argnums=(0,))
     def _get_observation(self, state: OthelloState):
         NUM_FIELDS = self.consts.NUM_FIELDS
-        
-        raw = state.field.field_color        
-        field_color_flat = jnp.concatenate(raw).reshape(-1, 1)
+        frame_stack = getattr(self, "frame_stack_size", 1)  # normalerweise 4
 
-        field_color_flat = jnp.zeros((64, 1), dtype=jnp.int32)
+        # Aktuelles field_color flatten + (NUM_FIELDS, 1)
+        raw = state.field.field_color        
+        field_color_flat = jnp.concatenate(raw).reshape(-1, 1)  # (64,1)
+
+        # Dummy Frame-Stack: Wiederhole field_color_flat `frame_stack`-mal
+        field_color_stacked = jnp.tile(field_color_flat, (frame_stack, 1))  # (64*4,1)
+
+        # Spieler- und Gegner-Score ebenfalls dummy stacked (frame_stack,)
+        player_score_stacked = jnp.tile(jnp.atleast_1d(state.player_score), frame_stack)
+        enemy_score_stacked = jnp.tile(jnp.atleast_1d(state.enemy_score), frame_stack)
+
         return OthelloObservation(
-            player_score = state.player_score,
-            enemy_score = state.enemy_score,
-            field_color = field_color_flat
+            player_score=player_score_stacked,
+            enemy_score=enemy_score_stacked,
+            field_color=field_color_stacked
         )
     
     @partial(jax.jit, static_argnums=(0,))
@@ -2838,10 +2846,12 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
 
     def observation_space(self) -> spaces.Dict:
         num_fields = self.consts.NUM_FIELDS
+        frame_stack = getattr(self, "frame_stack_size", 1)  # falls frame stacking aktiv ist
         return spaces.Dict({
-            "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            "field_color": spaces.Box(low=0, high=2, shape=(64, 1), dtype=jnp.int32),
+            "player_score": spaces.Box(low=0, high=64, shape=(frame_stack,), dtype=jnp.int32),
+            "enemy_score": spaces.Box(low=0, high=64, shape=(frame_stack,), dtype=jnp.int32),
+            # field_color flach + Frames gestapelt: (64 * frame_stack, 1) → flach wird der FlattenWrapper es zu (64*frame_stack,)
+            "field_color": spaces.Box(low=0, high=2, shape=(num_fields * frame_stack, 1), dtype=jnp.int32),
         })
 
     def image_space(self) -> spaces.Box:

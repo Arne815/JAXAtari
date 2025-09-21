@@ -2389,8 +2389,6 @@ class JaxSeaquest(JaxEnvironment[SeaquestState, SeaquestObservation, SeaquestInf
             state.shark_positions
         )
 
-        jax.debug.print("{}", sharks.shape)
-
         # Submarines
         submarines = jax.vmap(lambda pos: convert_to_entity(pos, self.consts.ENEMY_SUB_SIZE))(
             state.sub_positions
