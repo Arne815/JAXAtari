@@ -75,8 +75,6 @@ class OthelloConstants(NamedTuple):
     WINDOW_HEIGHT = 210 * 3
     WINDOW_WIDTH = 160 * 3
 
-    NUM_FIELDS = 64
-
 
 # Describes the possible configurations of one individual field (Not Taken, Player and Enemy)
 class FieldColor(enum.IntEnum):
@@ -100,19 +98,11 @@ class OthelloState(NamedTuple):
     end_of_game_reached: chex.Array #Used to check if the game has ended to reset, only true for one state and afterwards resets with a new field to false
     random_key: chex.Array #Stores a random key for random decision used as 0d int
 
-class EntityPosition(NamedTuple):
-    # field_id: jnp.ndarray
-    field_color: jnp.ndarray
-
 class OthelloObservation(NamedTuple):
-    # field: EntityPosition
-    # field_color: chex.Array
-    player_score: chex.Array
-    enemy_score: chex.Array
-    color_0_0: chex.Array
-    color_0_1: chex.Array
-    color_0_2: chex.Array
-    color_0_3: chex.Array
+    player_score: jnp.ndarray
+    enemy_score: jnp.ndarray
+    field: Field
+    field_choice_player: jnp.ndarray
 
 class OthelloInfo(NamedTuple):
     time: jnp.ndarray
@@ -120,10 +110,12 @@ class OthelloInfo(NamedTuple):
 
 
 class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, OthelloConstants ]):
-    def __init__(self, consts: OthelloConstants = None, reward_funcs: list[callable]=None):
+    def __init__(self, consts: OthelloConstants = None, frameskip: int = 0, reward_funcs: list[callable]=None):
         consts = consts or OthelloConstants()
         super().__init__(consts)
         self.renderer = OthelloRenderer(self.consts)
+        self.frameskip = frameskip + 1
+        self.frame_stack_size = 4
         
         if reward_funcs is not None:
             reward_funcs = tuple(reward_funcs)
@@ -140,6 +132,7 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             Action.DOWNLEFT,
             Action.DOWNRIGHT
         ]
+        self.obs_size = 130
 
     @partial(jax.jit, static_argnums=(0,))
     def has_player_decided_field(self, field_choice_player: chex.Array, action: chex.Array) -> Tuple[bool, chex.Array]:
@@ -2798,29 +2791,26 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_observation(self, state: OthelloState):
-        
         return OthelloObservation(
             player_score=state.player_score,
             enemy_score=state.enemy_score,
-            # field_color=state.field.field_color,
-            color_0_0 = state.field.field_color[0][0],
-            color_0_1 = state.field.field_color[0][1],
-            color_0_2 = state.field.field_color[0][2],
-            color_0_3 = state.field.field_color[0][3],
+            field=Field(
+                field_id = state.field.field_id, 
+                field_color = state.field.field_color,                
+            ),
+            field_choice_player=state.field_choice_player,
         )
     
     @partial(jax.jit, static_argnums=(0,))
-    def obs_to_flat_array(self, obs: OthelloObservation) -> chex.Array:      
-        
+    def obs_to_flat_array(self, obs: OthelloObservation) -> jnp.ndarray:
         return jnp.concatenate([
-            obs.player_score[None],
-            obs.enemy_score[None],
-            # obs.field_color.flatten(),
-            obs.color_0_0[None],
-            obs.color_0_1[None],
-            obs.color_0_2[None],
-            obs.color_0_3[None],
-        ]).astype(jnp.int32)
+            obs.player_score.flatten(),
+            obs.enemy_score.flatten(),
+            obs.field.field_id.flatten(),
+            obs.field.field_color.flatten(),
+            obs.field_choice_player.flatten(),
+        ]
+        )
     
     def render(self, state: OthelloState) -> jnp.ndarray:
         return self.renderer.render(state)
@@ -2842,17 +2832,14 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
         return spaces.Discrete(9)
 
     def observation_space(self) -> spaces.Dict:
-        """
-        Return the observation space for the environment.
-        """
         return spaces.Dict({
             "player_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
             "enemy_score": spaces.Box(low=0, high=64, shape=(), dtype=jnp.int32),
-            # "field_color": spaces.Box(low=0, high=2, shape=(self.consts.FIELD_HEIGHT, self.consts.FIELD_WIDTH), dtype=jnp.int32),
-            "color_0_0": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
-            "color_0_1": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
-            "color_0_2": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
-            "color_0_3": spaces.Box(low=0, high=2, shape=(), dtype=jnp.int32),
+            "field": spaces.Dict({
+                "field_id": spaces.Box(low=0, high=63, shape=(8,8), dtype=jnp.int32), 
+                "field_color": spaces.Box(low=0, high=2, shape=(8,8), dtype=jnp.int32),
+            }),
+            "field_choice_player":  spaces.Box(low=0, high=7, shape=(2,), dtype=jnp.int32), 
         })
 
     def image_space(self) -> spaces.Box:
@@ -2862,6 +2849,46 @@ class JaxOthello(JaxEnvironment[OthelloState, OthelloObservation, OthelloInfo, O
             shape=(210, 160, 3),
             dtype=jnp.uint8
         )
+
+
+
+def load_sprites():
+    """Load all sprites required for Pong rendering."""
+    MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    # Load sprites
+    player = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/player_white_disc.npy"), transpose=False)
+    enemy = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/enemy_black_disc.npy"), transpose=False)
+
+    bg = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/othello_background.npy"), transpose=False)
+
+    # Convert all sprites to the expected format (add frame dimension)
+    SPRITE_BG = jnp.expand_dims(bg, axis=0)
+    SPRITE_PLAYER = jnp.expand_dims(player, axis=0)
+    SPRITE_ENEMY = jnp.expand_dims(enemy, axis=0)
+
+    # Load digits for scores
+    PLAYER_DIGIT_SPRITES = jr.load_and_pad_digits(
+        os.path.join(MODULE_DIR, "sprites/othello/number_{}_player.npy"),
+        num_chars=10,
+    )
+    ENEMY_DIGIT_SPRITES = jr.load_and_pad_digits(
+        os.path.join(MODULE_DIR, "sprites/othello/number_{}_enemy.npy"),
+        num_chars=10,
+    )
+
+    return (
+        SPRITE_BG,
+        SPRITE_PLAYER,
+        SPRITE_ENEMY,
+        PLAYER_DIGIT_SPRITES,
+        ENEMY_DIGIT_SPRITES
+    )
+
+
+@jax.jit
+def render_point_of_disc(id):
+    return jnp.array([18 + 16 * id[1], 22 + 22 * id[0]], dtype=jnp.int32)
 
 
 class OthelloRenderer(JAXGameRenderer):
@@ -2874,43 +2901,7 @@ class OthelloRenderer(JAXGameRenderer):
             self.SPRITE_ENEMY,
             self.PLAYER_DIGIT_SPRITES,
             self.ENEMY_DIGIT_SPRITES,
-        ) = self.load_sprites()
-
-    def load_sprites(self):
-        MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-        # Load sprites
-        player = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/player_white_disc.npy"), transpose=False)
-        enemy = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/enemy_black_disc.npy"), transpose=False)
-
-        bg = jr.loadFrame(os.path.join(MODULE_DIR, "sprites/othello/othello_background.npy"), transpose=False)
-
-        # Convert all sprites to the expected format (add frame dimension)
-        SPRITE_BG = jnp.expand_dims(bg, axis=0)
-        SPRITE_PLAYER = jnp.expand_dims(player, axis=0)
-        SPRITE_ENEMY = jnp.expand_dims(enemy, axis=0)
-
-        # Load digits for scores
-        PLAYER_DIGIT_SPRITES = jr.load_and_pad_digits(
-            os.path.join(MODULE_DIR, "sprites/othello/number_{}_player.npy"),
-            num_chars=10,
-        )
-        ENEMY_DIGIT_SPRITES = jr.load_and_pad_digits(
-            os.path.join(MODULE_DIR, "sprites/othello/number_{}_enemy.npy"),
-            num_chars=10,
-        )
-
-        return (
-            SPRITE_BG,
-            SPRITE_PLAYER,
-            SPRITE_ENEMY,
-            PLAYER_DIGIT_SPRITES,
-            ENEMY_DIGIT_SPRITES
-        )
-
-    @partial(jax.jit, static_argnums=(0,))
-    def render_point_of_disc(self, id):
-        return jnp.array([18 + 16 * id[1], 22 + 22 * id[0]], dtype=jnp.int32)
+        ) = load_sprites()
 
     @partial(jax.jit, static_argnums=(0,))
     def render(self, state):
@@ -2933,7 +2924,7 @@ class OthelloRenderer(JAXGameRenderer):
                 def inner_loop(j, carry):
                     raster = carry
                     color = field_color[i, j]
-                    render_point = self.render_point_of_disc(jnp.array([i,j], dtype=jnp.int32))
+                    render_point = render_point_of_disc(jnp.array([i,j], dtype=jnp.int32))
 
                     return jax.lax.cond(
                         color == FieldColor.EMPTY, 
@@ -2955,7 +2946,7 @@ class OthelloRenderer(JAXGameRenderer):
 
         # rendering the disc in flipping modus to show where the current disc is 
         # for better orientation
-        current_player_choice = self.render_point_of_disc(state.field_choice_player)
+        current_player_choice = render_point_of_disc(state.field_choice_player)
         raster = jax.lax.cond(
             jnp.logical_and(
                 jnp.logical_not(state.end_of_game_reached),
